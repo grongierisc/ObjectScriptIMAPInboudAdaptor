@@ -10,6 +10,9 @@
         "service": "iris",
         "internalPort": 52773
       }
-    }
+    },
+    "objectscript.autoPreviewXML": true,
+    "objectscript.conn.password": "password",
+    "objectscript.compileFlags": "cbuk"
 
 }
