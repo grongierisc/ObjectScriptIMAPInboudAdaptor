@@ -254,6 +254,43 @@ CommitDeleteMessageError
  	Quit ..MailError($$$ConnectionTerminated,$$$CurrentMethod_" : Connection Terminated.")
 }
 
+/// <P>Remove all mail messages which have the \Deleted flag. Use method <METHOD>AddFlagToMessage</METHOD> to add flag \Deleted and use EXPUNGE IMAP command to suppress the mail in the mail box.</P>
+Method CommitSeenMessage(uid As %Integer) As %Status [ Internal, Private ]
+{
+	If '..Connected quit ..MailError($$$NotConnectedError,$$$CurrentMethod_" : Not connected to IMAP server.")
+	If $get(uid)="" quit ..MailError($$$GeneralError,$$$CurrentMethod_" :  UID number is missing.")
+ 
+ 	Set tSC=$$$YES
+
+ 	Set tSC=..AddFlagToMessage(uid,"\Seen") If $$$ISERR(tSC) quit 
+	
+    If $$$ISERR(tSC) quit ..MailError($$$GeneralError,$$$CurrentMethod_" : Server IMAP error :"_tSC)
+    
+ 	Set iosave=$io
+ 	Set timeout=..timeout
+ 	Set $ZTrap="CommitDeleteMessageError"
+ 	Use ..dev 
+ 
+ 	Write ". EXPUNGE",!
+ 	Do
+ 	{
+		Read line:timeout
+ 	}
+ 	While (($P(line," ",1,2)'=". OK") && ($P(line," ",1,2)'=". BAD") && ($P(line," ",1,2)'=". NO"))
+
+ 	If (($P(line," ",1,2)=". BAD") || ($P(line," ",1,2)=". NO")) quit ..MailError($$$GeneralError,$$$CurrentMethod_" : "_line)
+ 
+ 	Use iosave
+ 	Quit $$$OK
+CommitDeleteMessageError
+ 	Set $ZTrap=""
+ 	Set ..Connected=0
+ 	If ..dev'="" close ..dev
+ 	Set ..dev=0
+ 	Use iosave
+ 	Quit ..MailError($$$ConnectionTerminated,$$$CurrentMethod_" : Connection Terminated.")
+}
+
 /// <P>Rollback deletes using CLOSE IMAP command.</P>		
 Method RollbackDeletes() As %Status [ Internal, Private ]
 {

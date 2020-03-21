@@ -3,7 +3,7 @@ Class ExtEns.EMail.FetchImapProtocol Extends ExtEns.EMail.IMAP
 {
 
 /// <P>Reads the mail messages and attachements.</P>
-Method FetchMail(pFolder As %String, uid As %Integer, MessageSize As %Integer, ByRef MailMsgout As %Net.MailMessage, Delete As %Boolean = 0) As %Status
+Method FetchMail(pFolder As %String, uid As %Integer, MessageSize As %Integer, ByRef MailMsgout As %Net.MailMessage, Delete As %Boolean = 0, Seen As %Boolean = 0) As %Status
 {
 	If '..Connected quit ..MailError($$$NotConnectedError,$$$CurrentMethod_" : Not connected to IMAP server.")
 	If $get(uid)="" quit ..MailError($$$GeneralError,$$$CurrentMethod_" :  Uid parameter of the mail is missing.")
@@ -18,6 +18,8 @@ Method FetchMail(pFolder As %String, uid As %Integer, MessageSize As %Integer, B
 
  	Set MailMsgout.MessageSize=MessageSize
  	
+	#; Set flag seen current message from Server
+ 	If Seen quit ..CommitSeenMessage(uid)
  	#; Delete current message from Server
  	If Delete quit ..CommitDeleteMessage(uid)
  

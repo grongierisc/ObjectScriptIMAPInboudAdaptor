@@ -29,6 +29,7 @@ Property MatchBefore As %String;
 Property MatchSince As %String;
 
 // Only Emails unseen
+
 Property Unseen As %Boolean;
 
 /// Look for mail messages into all mailboxes.<br/>
@@ -58,7 +59,11 @@ Property SSLConfig As %String;
 /// If not deleted, the adapter will ignore emails already processed until something else removes them from the IMAP server.
 Property DeleteFromServer As %Boolean [ InitialExpression = 0 ];
 
-Parameter SETTINGS = "IMAPServer:Basic,IMAPPort:Basic,Credentials:Basic:credentialsSelector,DeleteFromServer:Basic,SSLConfig:Connection:sslConfigSelector,MatchFrom,MatchTo,MatchSubject,MatchBefore,MatchSince,SeachAllMailboxes,MailboxName,Unseen";
+/// Specifies whether or not to set flag seen to emails from the IMAP server after successful processing <br/>
+/// If not seen, the adapter will ignore emails already processed until something else removes them from the IMAP server.
+Property SeenFromServer As %Boolean [ InitialExpression = 0 ];
+
+Parameter SETTINGS = "IMAPServer:Basic,IMAPPort:Basic,Credentials:Basic:credentialsSelector,DeleteFromServer:Basic,SeenFromServer:Basic,SSLConfig:Connection:sslConfigSelector,MatchFrom,MatchTo,MatchSubject,MatchBefore,MatchSince,SeachAllMailboxes,MailboxName,Unseen";
 
 Property MailServer As ExtEns.EMail.FetchImapProtocol;
 
@@ -113,13 +118,13 @@ Method OnTask() As %Status
 			}
 			Else { $$$LOGSTATUS(tSC) }
 				
-			s a=..SearchConditions()
-			$$$TRACE("SearchConditions:"_a)
+			s tSearchConditions=..SearchConditions()
+			$$$TRACE("SearchConditions:"_tSearchConditions)
 
 			$$$SetJobMonitor(..BusinessHost.%ConfigName,$$$SystemName_":"_$Job,$$$eMonitorConnected,..MailServer.Connected_"|"_$$$timeUTC_"|"_..IMAPServer_":"_..IMAPPort)
 		    
 			#; Check for a matching messages we can deal with
-		    Set:$$$ISOK(tSC) tSC=..MailServer.FetchUIDMailBoxes(..SeachAllMailboxes,..MailboxName,a,.tUIDArray)
+		    Set:$$$ISOK(tSC) tSC=..MailServer.FetchUIDMailBoxes(..SeachAllMailboxes,..MailboxName,tSearchConditions,.tUIDArray)
 		   			
 			$$$TRACE("tUIDArray"_tUIDArray)
 
@@ -183,7 +188,7 @@ Method OnTask() As %Status
 		$$$ASSERT(tCurrMsgID'="x")	
 		
 		#; call BusinessService for processing
-		Set tSC = ..MailServer.FetchMail(tOneFolder,tOneUID,tOneSizeUID,.tMailMessage,..DeleteFromServer)  Quit:$$$ISERR(tSC) ; Get full message
+		Set tSC = ..MailServer.FetchMail(tOneFolder,tOneUID,tOneSizeUID,.tMailMessage,..DeleteFromServer,..SeenFromServer)  Quit:$$$ISERR(tSC) ; Get full message
 		$$$LOGINFO("Processing Mail Message "_..%ILastMsg_"/"_..%UIDArray.Count()_":'"_tCurrMsgID_"' (folder "_tOneFolder_") ;From: "_tMailMessage.From_", To: "_tMailMessage.To.GetAt(1)_", Subject: "_tMailMessage.Subject_", Date: "_tMailMessage.Date)
 		Set tSC = ..BusinessHost.ProcessInput(tMailMessage)  Quit:$$$ISERR(tSC)
 		
@@ -226,7 +231,7 @@ Method OnTearDown() As %Status
 ///  </blockquote>
 Method SearchConditions() As %String
 {
-	Set (tFROM,tTO,tSUBJECT,tBEFORE,tSINCE) = ""
+	Set (tFROM,tTO,tSUBJECT,tBEFORE,tSINCE,tUNSEEN) = ""
 	
 	 If (..MatchFrom'="") {
 		Set tFROM = "FROM """ _ $P(..MatchFrom,";",1) _ """ "
@@ -263,8 +268,8 @@ Method SearchConditions() As %String
 	   Set MatchSince=$p($ZDATE(H,7)," ",2)_"-"_$p($ZDATE(H,7)," ",1)_"-"_$p($ZDATE(H,7)," ",3)
 	   Set tSINCE = "SINCE """ _ MatchSince _  """ "
     }
-	If ()
-    quit $zstrip(tBEFORE_tSINCE_tFROM_tTO_tSUBJECT_"UNSEEN",">W")
+	set:(..Unseen) tUNSEEN = "UNSEEN"
+    quit $zstrip(tBEFORE_tSINCE_tFROM_tTO_tSUBJECT_tUNSEEN,">W")
 }
 
 /// <P> Total of number of bytes for all messages found.</P>
